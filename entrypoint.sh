@@ -46,29 +46,28 @@ echo "pre_release = $pre_release"
 
 # fetch tags
 git fetch --tags
-    
-tagFmt="^v?[0-9]+\.[0-9]+\.[0-9]+$" 
-preTagFmt="^v?[0-9]+\.[0-9]+\.[0-9]+(-$suffix\.[0-9]+)?$" 
 
+tagFmt="^[0-9]+\.[0-9]+\.[0-9]+$" 
+preTagFmt="^[0-9]+\.[0-9]+\.[0-9]+(-$suffix\.[0-9]+)?$" 
+
+if [ with_v ]
+then 
+    tagFmt="^v?[0-9]+\.[0-9]+\.[0-9]+$"
+    preTagFmt="^v?[0-9]+\.[0-9]+\.[0-9]+(-$suffix\.[0-9]+)?$"
+fi
+    
 # get latest tag that looks like a semver (with or without v)
 case "$tag_context" in
     *repo*) 
-        taglist="$(git for-each-ref --sort=-v:refname --format '%(refname:lstrip=2)' | grep -E "$tagFmt")"
-        tag="$(semver $taglist | tail -n 1)"
-
-        pre_taglist="$(git for-each-ref --sort=-v:refname --format '%(refname:lstrip=2)' | grep -E "$preTagFmt")"
-        pre_tag="$(semver "$pre_taglist" | tail -n 1)"
+        tag=$(git for-each-ref --sort=-v:refname --format '%(refname:lstrip=2)' | grep -E "$tagFmt" | head -n1)
+        pre_tag=$(git for-each-ref --sort=-v:refname --format '%(refname:lstrip=2)' | grep -E "$preTagFmt" | head -n1)
         ;;
     *branch*) 
-        taglist="$(git tag --list --merged HEAD --sort=-v:refname | grep -E "$tagFmt")"
-        tag="$(semver $taglist | tail -n 1)"
-
-        pre_taglist="$(git tag --list --merged HEAD --sort=-v:refname | grep -E "$preTagFmt")"
-        pre_tag=$(semver "$pre_taglist" | tail -n 1)
+        tag=$(git tag --list --merged HEAD --sort=-v:refname | grep -E "$tagFmt" | head -n1)
+        pre_tag=$(git tag --list --merged HEAD --sort=-v:refname | grep -E "$preTagFmt" | head -n1)
         ;;
     * ) echo "Unrecognised context"; exit 1;;
 esac
-
 
 # if there are none, start tags at INITIAL_VERSION which defaults to 0.0.0
 if [ -z "$tag" ]
@@ -128,10 +127,14 @@ fi
 
 echo $part
 
-# prefix with 'v'
-if $with_v
+# did we get a new tag?
+if [ ! -z "$new" ]
 then
-	new="v$new"
+	# prefix with 'v'
+	if $with_v
+	then
+		new="v$new"
+	fi
 fi
 
 if [ ! -z $custom_tag ]
